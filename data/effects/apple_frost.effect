@@ -1,0 +1,76 @@
+// Frosted-glass: multi-sample blur + brightness / desat wash.
+// Stock libobs only — fixed unrolled taps, no StreamFX.
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+uniform float2 resolution;
+uniform float blur_amount;
+uniform float frost_mix;
+uniform float brightness;
+
+sampler_state textureSampler
+{
+	Filter   = Linear;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv = v_in.uv;
+	return vert_out;
+}
+
+float4 PSFrost(VertData v_in) : TARGET
+{
+	float2 texel = float2(1.0, 1.0) / max(resolution, float2(1.0, 1.0));
+	float amount = max(blur_amount, 0.0);
+	float2 o = texel * amount;
+	float2 uv = v_in.uv;
+
+	float4 sharp = image.Sample(textureSampler, uv);
+
+	// 13-tap unrolled blur (center + cross + diagonals + outer cross)
+	float4 blurred = sharp * 0.20;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(1.0, 0.0) * o)) * 0.10;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(-1.0, 0.0) * o)) * 0.10;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(0.0, 1.0) * o)) * 0.10;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(0.0, -1.0) * o)) * 0.10;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(0.707, 0.707) * o)) * 0.07;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(-0.707, 0.707) * o)) * 0.07;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(0.707, -0.707) * o)) * 0.07;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(-0.707, -0.707) * o)) * 0.07;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(1.5, 0.0) * o)) * 0.03;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(-1.5, 0.0) * o)) * 0.03;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(0.0, 1.5) * o)) * 0.03;
+	blurred += image.Sample(textureSampler, saturate(uv + float2(0.0, -1.5) * o)) * 0.03;
+
+	float mixv = saturate(frost_mix);
+	float4 frosted = lerp(sharp, blurred, mixv);
+
+	float luma = dot(frosted.rgb, float3(0.2126, 0.7152, 0.0722));
+	float3 desat = lerp(frosted.rgb, float3(luma, luma, luma), mixv * 0.35);
+	desat += brightness * mixv;
+	desat = saturate(desat);
+
+	float a = frosted.a;
+	return float4(desat * a, a);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSFrost(v_in);
+	}
+}

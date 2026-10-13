@@ -1,0 +1,67 @@
+// Soft circular / elliptical vignette (Apple aesthetic).
+// Constant AA — no fwidth.
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+uniform float2 resolution;
+uniform float intensity;
+uniform float softness;
+uniform float roundness;
+uniform float opacity;
+
+sampler_state textureSampler
+{
+	Filter   = Linear;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv = v_in.uv;
+	return vert_out;
+}
+
+float4 PSVignette(VertData v_in) : TARGET
+{
+	float4 video = image.Sample(textureSampler, v_in.uv);
+	video.rgb *= video.a;
+
+	float2 uv = v_in.uv * 2.0 - 1.0;
+	float aspect = resolution.x / max(resolution.y, 1.0);
+
+	// roundness: 0 = more elliptical (fit frame), 1 = circular
+	float r = saturate(roundness);
+	float2 p;
+	p.x = uv.x * lerp(1.0, aspect, 1.0 - r);
+	p.y = uv.y * lerp(aspect, 1.0, r);
+
+	float dist = length(p);
+	float soft = max(softness, 0.01);
+	float edge = 1.0 - intensity;
+
+	// Soft falloff from center toward edges
+	float vig = smoothstep(edge, edge + soft, dist);
+	vig = saturate(vig) * saturate(opacity);
+
+	float3 darkened = video.rgb * (1.0 - vig);
+	return float4(darkened, video.a);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSVignette(v_in);
+	}
+}

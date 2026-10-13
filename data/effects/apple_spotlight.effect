@@ -1,0 +1,64 @@
+// Soft radial brightening (spotlight) — center or offset.
+// Constant AA — no fwidth.
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+uniform float2 resolution;
+uniform float intensity;
+uniform float radius;
+uniform float softness;
+uniform float2 offset;
+
+sampler_state textureSampler
+{
+	Filter   = Linear;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv = v_in.uv;
+	return vert_out;
+}
+
+float4 PSSpotlight(VertData v_in) : TARGET
+{
+	float4 video = image.Sample(textureSampler, v_in.uv);
+	video.rgb *= video.a;
+
+	float2 uv = v_in.uv;
+	float2 center = float2(0.5, 0.5) + offset;
+	float2 d = uv - center;
+
+	float aspect = resolution.x / max(resolution.y, 1.0);
+	d.x *= aspect;
+
+	float dist = length(d);
+	float rad = max(radius, 0.01);
+	float soft = max(softness, 0.01);
+
+	float light = 1.0 - smoothstep(rad, rad + soft, dist);
+	light = saturate(light) * saturate(intensity);
+
+	float3 boosted = video.rgb * (1.0 + light);
+	return float4(boosted, video.a);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSSpotlight(v_in);
+	}
+}

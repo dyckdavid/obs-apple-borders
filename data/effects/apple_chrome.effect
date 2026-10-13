@@ -1,0 +1,171 @@
+// Apple-styled chrome: rounded rect clip, visible stroke, soft drop shadow.
+// Signed-distance field approach for crisp edges at any resolution.
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+uniform float2 resolution;
+uniform float corner_radius;
+uniform float border_thickness;
+uniform float4 border_color;
+uniform float shadow_blur;
+uniform float shadow_opacity;
+uniform float2 shadow_offset;
+uniform float content_padding;
+uniform bool enable_border;
+uniform bool enable_shadow;
+uniform float border_style; // 0=hairline,1=solid,2=soft glow,3=double,4=inset,5=custom
+uniform float border_softness;
+
+sampler_state textureSampler
+{
+	Filter   = Linear;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv = v_in.uv;
+	return vert_out;
+}
+
+float rounded_box_sdf(float2 p, float2 half_size, float radius)
+{
+	radius = min(radius, min(half_size.x, half_size.y));
+	float2 q = abs(p) - half_size + float2(radius, radius);
+	return min(max(q.x, q.y), 0.0) + length(max(q, float2(0.0, 0.0))) - radius;
+}
+
+float4 PSAppleChrome(VertData v_in) : TARGET
+{
+	float2 uv = v_in.uv;
+	float2 frag = uv * resolution;
+	float2 center = resolution * 0.5;
+
+	float pad = max(content_padding, 0.0);
+	float2 inner_half = resolution * 0.5 - float2(pad, pad);
+	inner_half = max(inner_half, float2(1.0, 1.0));
+
+	float radius = max(corner_radius, 0.0);
+	float style = border_style;
+	float t = enable_border ? max(border_thickness, 0.0) : 0.0;
+	float soft = max(border_softness, 0.0);
+
+	// Soft glow uses a wider feathered ring
+	float stroke_outer = t;
+	float stroke_inner = t;
+	if (style > 1.5 && style < 2.5) {
+		// soft glow: thicker outer feather
+		stroke_outer = t + soft;
+		stroke_inner = max(t * 0.35, 0.5);
+	}
+
+	// --- Soft drop shadow (behind content) ---
+	float shadow_a = 0.0;
+	if (enable_shadow && shadow_opacity > 0.001)
+	{
+		float2 shadow_p = frag - center - shadow_offset;
+		float sdist = rounded_box_sdf(shadow_p, inner_half, radius);
+		float blur = max(shadow_blur, 0.5);
+		shadow_a = (1.0 - smoothstep(-blur, blur, sdist)) * shadow_opacity;
+	}
+
+	// --- Content sample (inset UV so padding remains for the shadow) ---
+	float2 content_size = resolution - float2(pad, pad) * 2.0;
+	content_size = max(content_size, float2(1.0, 1.0));
+
+	float2 local = frag - float2(pad, pad);
+	float2 content_uv = local / content_size;
+
+	bool inside_content_rect =
+		content_uv.x >= 0.0 && content_uv.x <= 1.0 &&
+		content_uv.y >= 0.0 && content_uv.y <= 1.0;
+
+	float4 video = float4(0.0, 0.0, 0.0, 0.0);
+	if (inside_content_rect)
+	{
+		video = image.Sample(textureSampler, content_uv);
+		video.rgb *= video.a;
+	}
+
+	float2 content_p = frag - center;
+	float dist = rounded_box_sdf(content_p, inner_half, radius);
+
+	float aa = 1.25;
+
+	// Inset video by stroke so the border sits ON TOP of empty ring / over edge
+	// For solid/hairline/double/custom: clip content inside (dist + stroke_inner)
+	float content_inset = (enable_border && t > 0.01) ? stroke_inner : 0.0;
+	if (style > 3.5 && style < 4.5) {
+		// inset style: content flush to outer edge; border drawn inward on top
+		content_inset = 0.0;
+	}
+
+	float content_mask = 1.0 - smoothstep(-aa, aa, dist + content_inset);
+	float4 content = video * content_mask;
+
+	// --- Border ring(s) ---
+	float4 border = float4(0.0, 0.0, 0.0, 0.0);
+	if (enable_border && t > 0.01)
+	{
+		float4 bc = border_color;
+		bc.rgb *= bc.a;
+
+		if (style > 2.5 && style < 3.5) {
+			// Double: outer thin + inner thin with gap
+			float outer_t = max(t * 0.35, 0.75);
+			float gap = max(t * 0.35, 0.75);
+			float inner_t = max(t * 0.35, 0.75);
+
+			float outer_ring = saturate(
+				(1.0 - smoothstep(-aa, aa, dist)) -
+				(1.0 - smoothstep(-aa, aa, dist + outer_t)));
+			float inner_start = outer_t + gap;
+			float inner_ring = saturate(
+				(1.0 - smoothstep(-aa, aa, dist + inner_start)) -
+				(1.0 - smoothstep(-aa, aa, dist + inner_start + inner_t)));
+			float mask = saturate(outer_ring + inner_ring);
+			border = bc * mask;
+		} else if (style > 1.5 && style < 2.5) {
+			// Soft glow: feathered ring around the silhouette
+			float outer = 1.0 - smoothstep(-aa - soft, aa + soft, dist - soft * 0.15);
+			float inner = 1.0 - smoothstep(-aa, aa, dist + stroke_inner);
+			float mask = saturate(outer - inner);
+			border = bc * mask;
+		} else {
+			// Hairline / solid / inset / custom: crisp ring from outer edge inward
+			float outer = 1.0 - smoothstep(-aa, aa, dist);
+			float inner = 1.0 - smoothstep(-aa, aa, dist + stroke_outer);
+			float mask = saturate(outer - inner);
+			border = bc * mask;
+		}
+	}
+
+	// IMPORTANT: composite border OVER content (previous bug buried stroke under opaque video)
+	float3 rgb = border.rgb + content.rgb * (1.0 - border.a);
+	float coverage = border.a + content.a * (1.0 - border.a);
+
+	float shadow_vis = shadow_a * (1.0 - coverage);
+	float3 out_rgb = rgb; // shadow is black, premultiplied add below
+	float out_a = saturate(coverage + shadow_vis);
+	// black shadow contributes no rgb when premultiplied; alpha carries it
+	return float4(out_rgb, out_a);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSAppleChrome(v_in);
+	}
+}

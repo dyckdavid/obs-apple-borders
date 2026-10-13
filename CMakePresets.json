@@ -1,0 +1,55 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "macos-release",
+      "displayName": "macOS Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "APPLE_BORDERS_INSTALL_LOCAL": true
+      }
+    },
+    {
+      "name": "macos-xcode",
+      "displayName": "macOS Xcode",
+      "generator": "Xcode",
+      "binaryDir": "${sourceDir}/build-xcode",
+      "cacheVariables": {
+        "APPLE_BORDERS_INSTALL_LOCAL": true
+      }
+    },
+    {
+      "name": "macos-universal",
+      "displayName": "macOS Universal (arm64 + x86_64)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-universal",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_ARCHITECTURES": "arm64;x86_64",
+        "APPLE_BORDERS_INSTALL_LOCAL": true
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "macos-release",
+      "configurePreset": "macos-release"
+    },
+    {
+      "name": "macos-xcode",
+      "configurePreset": "macos-xcode",
+      "configuration": "Release"
+    },
+    {
+      "name": "macos-universal",
+      "configurePreset": "macos-universal"
+    }
+  ]
+}

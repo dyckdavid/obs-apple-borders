@@ -1,0 +1,83 @@
+// Procedural frosted rounded lower-third bar + left vertical accent strip.
+// Drawn as a full-frame sprite; bar geometry driven by uniforms.
+
+uniform float4x4 ViewProj;
+
+uniform float2 resolution;
+uniform float4 bar_color;
+uniform float4 accent_color;
+uniform float2 bar_origin;   // top-left of bar in pixels
+uniform float2 bar_size;     // width, height in pixels
+uniform float corner_radius;
+uniform float accent_width;  // left accent strip thickness (0 = off)
+
+struct VertData
+{
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv = v_in.uv;
+	return vert_out;
+}
+
+float rounded_box_sdf(float2 p, float2 half_size, float radius)
+{
+	radius = min(radius, min(half_size.x, half_size.y));
+	float2 q = abs(p) - half_size + float2(radius, radius);
+	return min(max(q.x, q.y), 0.0) + length(max(q, float2(0.0, 0.0))) - radius;
+}
+
+float4 PSLowerThird(VertData v_in) : TARGET
+{
+	float2 frag = v_in.uv * resolution;
+	float2 half_size = bar_size * 0.5;
+	float2 center = bar_origin + half_size;
+	float2 p = frag - center;
+
+	float radius = max(corner_radius, 0.0);
+	float dist = rounded_box_sdf(p, half_size, radius);
+	float aa = 1.25;
+	float mask = 1.0 - smoothstep(-aa, aa, dist);
+
+	float4 bc = bar_color;
+	bc.rgb *= bc.a;
+	float4 outc = bc * mask;
+
+	// Vertical accent strip along the LEFT edge — full bar height (minus
+	// small inset), sharp-ish edges, drawn OVER the bar at full opacity.
+	float aw = max(accent_width, 0.0);
+	if (aw > 0.01 && mask > 0.001) {
+		float inset = 3.0;
+		float strip_h = max(bar_size.y - inset * 2.0, 4.0);
+		float2 accent_half = float2(aw * 0.5, strip_h * 0.5);
+		float2 accent_center_local =
+			float2(-half_size.x + aw * 0.5 + inset * 0.35, 0.0);
+		float ar = min(max(aw * 0.25, 1.0), 3.0);
+		float adist = rounded_box_sdf(p - accent_center_local,
+					      accent_half, ar);
+		// Tighter AA for a crisp strip edge
+		float amask = (1.0 - smoothstep(-0.6, 0.6, adist)) * mask;
+
+		float4 ac = accent_color;
+		float a = saturate(ac.a) * amask;
+		// Premultiplied composite over the bar (do not over-multiply)
+		outc.rgb = ac.rgb * a + outc.rgb * (1.0 - a);
+		outc.a = a + outc.a * (1.0 - a);
+	}
+
+	return outc;
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSLowerThird(v_in);
+	}
+}

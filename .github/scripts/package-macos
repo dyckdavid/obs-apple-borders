@@ -130,7 +130,7 @@ package() {
     }
 
     if (( codesign && notarize )) {
-      if ! [[ ${CODESIGN_IDENT} != '-' && ${CODESIGN_TEAM} && {CODESIGN_IDENT_USER} && ${CODESIGN_IDENT_PASS} ]] {
+      if ! [[ ${CODESIGN_IDENT} != '-' && ${CODESIGN_TEAM} && ${CODESIGN_IDENT_USER} && ${CODESIGN_IDENT_PASS} ]] {
         log_error "Notarization requires Apple ID and application password."
         return 2
       }
@@ -152,6 +152,26 @@ package() {
         return 2
       }
     }
+
+    # Double-click friendly disk image: .pkg + short README
+    log_group "Creating DMG for ${product_name}..."
+    local dmg_root="${project_root}/release/dmg-${output_name}"
+    rm -rf ${dmg_root}
+    mkdir -p ${dmg_root}
+    cp ${project_root}/release/${output_name}.pkg ${dmg_root}/
+    if [[ -f ${project_root}/resources/macos/README-INSTALL.txt ]] {
+      cp ${project_root}/resources/macos/README-INSTALL.txt ${dmg_root}/README.txt
+    } else {
+      print -R "Double-click the .pkg to install OBS Apple Borders into your user OBS plugins folder, then restart OBS." > ${dmg_root}/README.txt
+    }
+    rm -f ${project_root}/release/${output_name}.dmg
+    hdiutil create \
+      -volname "OBS Apple Borders ${product_version}" \
+      -srcfolder ${dmg_root} \
+      -ov -format UDZO \
+      ${project_root}/release/${output_name}.dmg
+    rm -rf ${dmg_root}
+
     popd
   } else {
     log_group "Archiving ${product_name}..."

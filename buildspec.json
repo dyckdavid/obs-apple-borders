@@ -41,5 +41,8 @@
     "version": "1.3.0",
     "author": "David Dyck",
     "website": "https://github.com/dyckdavid/obs-apple-borders",
-    "email": "dyckdavid@users.noreply.github.com"
+    "email": "dyckdavid@users.noreply.github.com",
+    "uuids": {
+        "windowsApp": "c7f7187d-4d04-4df2-8cda-9309461089bb"
+    }
 }

@@ -1,0 +1,67 @@
+#define MyAppName "@CMAKE_PROJECT_NAME@"
+#define MyAppVersion "@CMAKE_PROJECT_VERSION@"
+#define MyAppPublisher "@PLUGIN_AUTHOR@"
+#define MyAppURL "@PLUGIN_WEBSITE@"
+
+[Setup]
+; Unique ID for this plugin installer (from buildspec.json uuids.windowsApp)
+AppId={{@UUID_APP@}}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}
+AppUpdatesURL={#MyAppURL}
+DefaultDirName={code:GetDirName}
+AppendDefaultDirName=no
+DefaultGroupName={#MyAppName}
+OutputBaseFilename={#MyAppName}-{#MyAppVersion}-windows-x64-Installer
+Compression=lzma
+SolidCompression=yes
+DirExistsWarning=no
+AllowNoIcons=yes
+WizardStyle=modern
+PrivilegesRequired=admin
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Files]
+; Package/ is remapped to OBS Studio layout (obs-plugins + data) by Package-Windows.ps1
+Source: "..\release\Package\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[Icons]
+Name: "{group}\{cm:ProgramOnTheWeb,{#MyAppName}}"; Filename: "{#MyAppURL}"
+
+[Code]
+function GetDirName(Value: string): string;
+var
+  InstallPath: string;
+begin
+  { Default guess if OBS is not registered }
+  Result := ExpandConstant('{pf}\obs-studio');
+
+  if RegQueryStringValue(HKLM32, 'SOFTWARE\OBS Studio', '', InstallPath) then
+    Result := InstallPath;
+  if RegQueryStringValue(HKLM64, 'SOFTWARE\OBS Studio', '', InstallPath) then
+    Result := InstallPath;
+end;
+
+function NextButtonClick(PageId: Integer): Boolean;
+var
+  ObsFileName: string;
+begin
+  Result := True;
+  if PageId <> wpSelectDir then
+    Exit;
+
+  ObsFileName := ExpandConstant('{app}\bin\64bit\obs64.exe');
+  if not FileExists(ObsFileName) then
+  begin
+    MsgBox('OBS Studio was not found in that folder (missing bin\64bit\obs64.exe).' + #13#10 +
+           'Please choose your OBS Studio install directory.', mbError, MB_OK);
+    Result := False;
+  end;
+end;

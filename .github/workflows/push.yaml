@@ -75,6 +75,7 @@ jobs:
             'windows-x64;zip|exe'
             'macos-universal;tar.xz|pkg|dmg'
             'ubuntu-24.04-x86_64;tar.xz|deb|ddeb'
+            'archlinux-x86_64;pkg.tar.zst'
             'sources;tar.xz'
           )
 
@@ -96,7 +97,7 @@ jobs:
           shopt -s extglob
 
           echo "### Checksums" > ${{ github.workspace }}/CHECKSUMS.txt
-          for file in ${{ github.workspace }}/@(*.exe|*.deb|*.ddeb|*.pkg|*.dmg|*.tar.xz|*.zip); do
+          for file in ${{ github.workspace }}/@(*.exe|*.deb|*.ddeb|*.pkg|*.dmg|*.tar.xz|*.zip|*.pkg.tar.zst); do
             echo "    ${file##*/}: $(sha256sum "${file}" | cut -d " " -f 1)" >> ${{ github.workspace }}/CHECKSUMS.txt
           done
 
@@ -118,3 +119,4 @@ jobs:
             ${{ github.workspace }}/*.deb
             ${{ github.workspace }}/*.ddeb
             ${{ github.workspace }}/*.tar.xz
+            ${{ github.workspace }}/*.pkg.tar.zst

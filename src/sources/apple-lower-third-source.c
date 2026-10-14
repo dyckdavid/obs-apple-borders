@@ -160,7 +160,8 @@ static obs_data_t *apple_lt_make_text_settings(const char *text, int font_size, 
 #elif defined(_WIN32)
 	obs_data_set_string(font, "face", "Segoe UI");
 #else
-	obs_data_set_string(font, "face", "Sans Serif");
+	/* Arch / Omarchy / most Linux distros: prefer widely installed faces */
+	obs_data_set_string(font, "face", "Noto Sans");
 #endif
 	obs_data_set_string(font, "style", bold ? "Bold" : "Regular");
 	obs_data_set_int(font, "size", font_size);

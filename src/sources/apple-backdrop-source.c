@@ -24,6 +24,14 @@ static const struct backdrop_preset PRESETS[] = {
 	{"apple_window_stack", "backgrounds/apple-window-stack.jpg", "Backdrop.AppleWindowStack"},
 	{"apple_mist_panels", "backgrounds/apple-mist-panels.jpg", "Backdrop.AppleMistPanels"},
 	{"apple_soft_bands", "backgrounds/apple-soft-bands.jpg", "Backdrop.AppleSoftBands"},
+	{"apple_porcelain_shelf", "backgrounds/apple-porcelain-shelf.jpg", "Backdrop.ApplePorcelainShelf"},
+	{"apple_linen_panels", "backgrounds/apple-linen-panels.jpg", "Backdrop.AppleLinenPanels"},
+	{"apple_cloud_layers", "backgrounds/apple-cloud-layers.jpg", "Backdrop.AppleCloudLayers"},
+	{"apple_paper_tiles", "backgrounds/apple-paper-tiles.jpg", "Backdrop.ApplePaperTiles"},
+	{"apple_charcoal_panels", "backgrounds/apple-charcoal-panels.jpg", "Backdrop.AppleCharcoalPanels"},
+	{"apple_midnight_stack", "backgrounds/apple-midnight-stack.jpg", "Backdrop.AppleMidnightStack"},
+	{"apple_slate_ribbons", "backgrounds/apple-slate-ribbons.jpg", "Backdrop.AppleSlateRibbons"},
+	{"apple_dusk_veil", "backgrounds/apple-dusk-veil.jpg", "Backdrop.AppleDuskVeil"},
 };
 
 #define PRESET_COUNT (sizeof(PRESETS) / sizeof(PRESETS[0]))

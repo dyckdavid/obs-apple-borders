@@ -18,13 +18,16 @@ extern "C" {
 #define APPLE_CHROME_DEFAULT_RADIUS 24.0
 #define APPLE_CHROME_DEFAULT_BORDER_THICKNESS 2.0
 #define APPLE_CHROME_DEFAULT_BORDER_COLOR 0xB3FFFFFF /* ABGR visible white hairline (~70% a) */
+#define APPLE_CHROME_DEFAULT_BORDER_COLOR2 0x66FFFFFF
 #define APPLE_CHROME_DEFAULT_BORDER_STYLE 0          /* hairline light */
-#define APPLE_CHROME_DEFAULT_BORDER_SOFTNESS 6.0
+#define APPLE_CHROME_DEFAULT_BORDER_SOFTNESS 0.0
 #define APPLE_CHROME_DEFAULT_SHADOW_BLUR 20.0
 #define APPLE_CHROME_DEFAULT_SHADOW_OPACITY 0.40
 #define APPLE_CHROME_DEFAULT_SHADOW_OFFSET_X 0.0
 #define APPLE_CHROME_DEFAULT_SHADOW_OFFSET_Y 10.0
 #define APPLE_CHROME_DEFAULT_PADDING 32.0
+#define APPLE_CHROME_DEFAULT_SHADOW_PRESET 1 /* soft */
+#define APPLE_CHROME_DEFAULT_GRADIENT_ANGLE 90.0
 
 enum apple_pip_corner {
 	APPLE_PIP_CORNER_TOP_LEFT = 0,
@@ -33,22 +36,42 @@ enum apple_pip_corner {
 	APPLE_PIP_CORNER_BOTTOM_RIGHT = 3,
 };
 
+/* Keep existing numeric IDs stable for saved scenes; append new styles. */
 enum apple_border_style {
 	APPLE_BORDER_HAIRLINE_LIGHT = 0,
 	APPLE_BORDER_HAIRLINE_DARK = 1,
-	APPLE_BORDER_SOFT_GLOW = 2,
+	APPLE_BORDER_SOFT_GLOW = 2, /* legacy name; shown as "Glass" */
 	APPLE_BORDER_DOUBLE = 3,
 	APPLE_BORDER_INSET = 4,
 	APPLE_BORDER_SOLID_LIGHT = 5,
 	APPLE_BORDER_SOLID_DARK = 6,
 	APPLE_BORDER_ACCENT_BLUE = 7,
 	APPLE_BORDER_CUSTOM = 8,
+	APPLE_BORDER_THICK = 9,
+	APPLE_BORDER_GLASS = 10,
+	APPLE_BORDER_INNER_GLOW = 11,
+	APPLE_BORDER_NONE = 12,
+};
+
+enum apple_shadow_preset {
+	APPLE_SHADOW_NONE = 0,
+	APPLE_SHADOW_SOFT = 1,
+	APPLE_SHADOW_MEDIUM = 2,
+	APPLE_SHADOW_DEEP = 3,
+	APPLE_SHADOW_FLOATING = 4,
+	APPLE_SHADOW_CUSTOM = 5,
 };
 
 struct apple_chrome_settings {
 	float corner_radius;
+	float corner_radius_tl;
+	float corner_radius_tr;
+	float corner_radius_br;
+	float corner_radius_bl;
 	float border_thickness;
 	struct vec4 border_color;
+	struct vec4 border_color2;
+	float border_gradient_angle;
 	float shadow_blur;
 	float shadow_opacity;
 	float shadow_offset_x;
@@ -56,17 +79,23 @@ struct apple_chrome_settings {
 	float content_padding;
 	float border_softness;
 	int border_style;
+	int shadow_preset;
 	bool enable_border;
 	bool enable_shadow;
+	bool use_per_corner_radius;
+	bool enable_border_gradient;
 };
 
 struct apple_chrome_effect {
 	gs_effect_t *effect;
 	gs_eparam_t *param_image;
 	gs_eparam_t *param_resolution;
-	gs_eparam_t *param_corner_radius;
+	gs_eparam_t *param_corner_radii;
 	gs_eparam_t *param_border_thickness;
 	gs_eparam_t *param_border_color;
+	gs_eparam_t *param_border_color2;
+	gs_eparam_t *param_border_gradient_angle;
+	gs_eparam_t *param_enable_border_gradient;
 	gs_eparam_t *param_shadow_blur;
 	gs_eparam_t *param_shadow_opacity;
 	gs_eparam_t *param_shadow_offset;

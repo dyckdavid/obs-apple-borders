@@ -1,14 +1,14 @@
 # OBS Apple Borders
 
-macOS-inspired visuals for OBS Studio: window chrome, Picture-in-Picture, light backdrops, and streaming polish filters/sources.
+macOS-inspired visuals for OBS Studio: window chrome, Picture-in-Picture, light and dark backdrops, and streaming polish filters/sources.
 
-**Version 1.3.0** — built on the official [obs-plugintemplate](https://github.com/obsproject/obs-plugintemplate) CMake + CI layout. Requires **OBS Studio 30+**.
+**Version 1.4.0** — built on the official [obs-plugintemplate](https://github.com/obsproject/obs-plugintemplate) CMake + CI layout. Requires **OBS Studio 30+**.
 
 ### Filters
 
 | Filter | What it does |
 |--------|----------------|
-| **Apple Border** | Rounds the source, draws a Continuity Camera–style hairline stroke, and adds a soft drop shadow. |
+| **Apple Border** | Rounds the source (uniform or per-corner), draws a styled stroke (hairline, thick, glass, double, inner glow, …), optional gradient border, and a soft drop shadow with presets. |
 | **Apple Picture-in-Picture** | Composites another video source or scene into a corner, with Apple chrome on the inset. |
 | **Apple Vignette** | Soft circular / elliptical edge darkening. |
 | **Apple Spotlight** | Soft radial brightening (center or offset). |
@@ -18,7 +18,7 @@ macOS-inspired visuals for OBS Studio: window chrome, Picture-in-Picture, light 
 
 | Source | What it does |
 |--------|----------------|
-| **Apple Backdrop** | Bundled light Apple white-box / frost panel JPG presets. |
+| **Apple Backdrop** | Bundled Apple-style light and dark panel JPG presets. |
 | **Apple Lower Third** | Frosted rounded bar with accent, style presets, and title/subtitle text. |
 | **Apple Soft Gradient** | Procedural multi-hue animated soft mesh gradient. |
 
@@ -53,11 +53,33 @@ If macOS warns that the installer is from an unidentified developer (unsigned CI
 
 A **`.zip`** is also published if you prefer to copy files yourself.
 
-### Linux
+### Linux (Ubuntu / Debian)
 
 1. Download the **`.deb`** package.
 2. Double-click it in your file manager (Ubuntu Software / Discover / GDebi), or open it with your package installer.
 3. Restart OBS Studio.
+
+### Arch Linux & Omarchy
+
+Omarchy is Arch-based and typically runs OBS under **Hyprland / Wayland**. This plugin’s Arch package installs into the same paths Arch’s `obs-studio` package uses, so it loads the same way on X11 or Wayland.
+
+1. Download the **`.pkg.tar.zst`** from [Releases](https://github.com/dyckdavid/obs-apple-borders/releases).
+2. Double-click it in your file manager (opens the graphical package installer), **or** run:
+
+```bash
+sudo pacman -U obs-apple-borders-1.4.0-x86_64.pkg.tar.zst
+```
+
+3. Fully quit OBS Studio, then open it again.
+
+Installed files:
+
+| Path | Contents |
+|------|----------|
+| `/usr/lib/obs-plugins/obs-apple-borders.so` | Plugin module |
+| `/usr/share/obs/obs-plugins/obs-apple-borders/` | Effects, locale, backgrounds |
+
+AUR-ready PKGBUILDs live in [`packaging/arch/`](packaging/arch/) (source build + `-bin` that uses the release asset).
 
 ---
 
@@ -74,10 +96,10 @@ A **`.zip`** is also published if you prefer to copy files yourself.
 Push a version tag to publish a draft GitHub Release with all installers attached:
 
 ```text
-v1.3.0
+v1.4.0
 ```
 
-Also accepted: `1.3.0`, and prerelease forms like `v1.3.0-beta1` / `v1.3.0-rc1`.
+Also accepted: `1.4.0`, and prerelease forms like `v1.4.0-beta1` / `v1.4.0-rc1`.
 
 Attached artifacts typically include:
 
@@ -85,7 +107,10 @@ Attached artifacts typically include:
 |----------|--------|
 | macOS | Universal `.pkg`, `.dmg` (pkg + short README), optional `.tar.xz` |
 | Windows | `.exe` installer, `.zip` |
-| Linux | `.deb` (and debug symbols when produced) |
+| Ubuntu | `.deb` (and debug symbols when produced) |
+| Arch Linux | `.pkg.tar.zst` |
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ---
 
@@ -119,9 +144,9 @@ Notarization is attempted on version tags (`v*.*.*`) when Apple ID secrets are p
 | **OBS Studio** 30+ | Runtime |
 | **CMake** 3.28+ | Plugin template |
 | **Ninja** / **Xcode 16** / **VS 2022** | Platform toolchain |
-| **libobs** | OBS deps, Homebrew, or `libobs-dev` / OBS PPA |
+| **libobs** | OBS deps, Homebrew, or `libobs-dev` / OBS PPA / Arch `obs-studio` |
 
-### Linux
+### Linux (Ubuntu)
 
 ```bash
 sudo apt install build-essential cmake ninja-build pkg-config \
@@ -130,6 +155,23 @@ sudo apt install build-essential cmake ninja-build pkg-config \
 cmake --preset ubuntu-x86_64
 cmake --build --preset ubuntu-x86_64
 cmake --install build_x86_64 --prefix release/RelWithDebInfo
+```
+
+### Linux (Arch / Omarchy)
+
+```bash
+sudo pacman -S --needed base-devel cmake ninja obs-studio
+
+cmake --preset archlinux-x86_64
+cmake --build --preset archlinux-x86_64
+sudo cmake --install build_arch_x86_64
+```
+
+Or use the PKGBUILD:
+
+```bash
+cd packaging/arch/obs-apple-borders
+makepkg -si
 ```
 
 ### macOS
@@ -155,6 +197,7 @@ obs-apple-borders/
 ├── CMakeLists.txt
 ├── buildspec.json              # name, version, UUIDs, OBS/deps pins
 ├── cmake/                      # obs-plugintemplate helpers
+├── packaging/arch/             # AUR-ready PKGBUILDs
 ├── .github/                    # build + package + release workflows
 ├── resources/macos/            # DMG README for end users
 ├── data/                       # effects, locale, backgrounds
@@ -168,7 +211,7 @@ obs-apple-borders/
 
 ## Compatibility
 
-Scene collections from v1.2.x keep working: filter/source **IDs** and **setting keys** are unchanged in 1.3.0.
+Scene collections from v1.2.x / v1.3.x keep working: filter/source **IDs** and existing **setting keys** are unchanged. New chrome keys (per-corner radius, gradient border, shadow presets, extra border styles) use defaults when absent.
 
 ---
 

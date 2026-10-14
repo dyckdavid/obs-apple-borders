@@ -87,7 +87,8 @@ runs:
 
           security import "${certificate_path}" -P "${MACOS_SIGNING_CERT_PASSWORD}" -A \
             -t cert -f pkcs12 -k ${keychain_path} \
-            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcrun
+            -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcrun \
+            -T /usr/bin/productsign
 
           security set-key-partition-list -S 'apple-tool:,apple:' -k "${MACOS_KEYCHAIN_PASSWORD}" \
             ${keychain_path} &> /dev/null
@@ -95,12 +96,59 @@ runs:
           security list-keychain -d user -s ${keychain_path} 'login-keychain'
           print '::endgroup::'
 
-          local -r team_id="${${MACOS_SIGNING_IDENTITY##* }//(\(|\))/}"
+          print '::group::Imported signing identities'
+          # Non-secret: certificate common names present after p12 import
+          security find-identity -v -p codesigning ${keychain_path} || true
+          print '::endgroup::'
 
-          print "codesignIdent=${MACOS_SIGNING_IDENTITY}" >> $GITHUB_OUTPUT
-          print "installerIdent=${MACOS_SIGNING_IDENTITY_INSTALLER}" >> $GITHUB_OUTPUT
+          # Accept full CN or bare "Name (TEAMID)" — prepend Developer ID prefix if missing
+          local app_ident="${MACOS_SIGNING_IDENTITY}"
+          local installer_ident="${MACOS_SIGNING_IDENTITY_INSTALLER}"
+          if [[ ${app_ident} != Developer\ ID\ Application:* ]] {
+            app_ident="Developer ID Application: ${app_ident}"
+            print "::notice::Prepended 'Developer ID Application:' to APPLE_APPLICATION_IDENTITY"
+          }
+          if [[ ${installer_ident} != Developer\ ID\ Installer:* ]] {
+            installer_ident="Developer ID Installer: ${installer_ident}"
+            print "::notice::Prepended 'Developer ID Installer:' to APPLE_INSTALLER_IDENTITY"
+          }
+
+          # Team ID from "Name (TEAMID)" — Apple Team IDs are 10 alphanumerics
+          local team_id
+          team_id="$(print "${app_ident}" | /usr/bin/sed -En 's/.*\(([A-Z0-9]{10})\).*/\1/p')"
+          if [[ -z ${team_id} ]] {
+            print '::error::APPLE_APPLICATION_IDENTITY must look like:'
+            print '::error::  Developer ID Application: Your Name (TEAMID)'
+            print '::error::or the bare form: Your Name (TEAMID)'
+            print '::error::where TEAMID is your 10-character Apple Team ID in parentheses.'
+            print '::error::Current value does not contain a (TEAMID) suffix (parsed team was empty).'
+            print '::error::Copy the exact string from Keychain Access → certificate → Common Name.'
+            exit 1
+          }
+
+          if ! security find-identity -v -p codesigning ${keychain_path} \
+              | /usr/bin/grep -F "\"${app_ident}\"" >/dev/null; then
+            print "::error::No codesigning certificate in the imported p12 matches APPLE_APPLICATION_IDENTITY."
+            print "::error::Expected exact Common Name: ${app_ident}"
+            print '::error::Fix APPLE_APPLICATION_IDENTITY to match a Developer ID Application identity'
+            print '::error::shown above, or re-export APPLE_CERTIFICATE (.p12) including that Application'
+            print '::error::certificate and its private key (base64-encoded).'
+            exit 1
+          fi
+
+          if ! security find-identity -v ${keychain_path} \
+              | /usr/bin/grep -F "\"${installer_ident}\"" >/dev/null; then
+            print '::warning::APPLE_INSTALLER_IDENTITY was not found in the imported p12.'
+            print "::warning::Expected: ${installer_ident}"
+            print '::warning::productsign will fail later unless the Developer ID Installer cert is included.'
+            print '::warning::Export both Application + Installer certs into one .p12, or fix APPLE_INSTALLER_IDENTITY.'
+          fi
+
+          print "codesignIdent=${app_ident}" >> $GITHUB_OUTPUT
+          print "installerIdent=${installer_ident}" >> $GITHUB_OUTPUT
           print "MACOS_KEYCHAIN_PASSWORD=${MACOS_KEYCHAIN_PASSWORD}" >> $GITHUB_ENV
           print "codesignTeam=${team_id}" >> $GITHUB_OUTPUT
+          print "haveCodesignIdent=true" >> $GITHUB_OUTPUT
         } else {
           print 'haveCodesignIdent=false' >> $GITHUB_OUTPUT
           print 'haveProvisioningProfile=false' >> $GITHUB_OUTPUT

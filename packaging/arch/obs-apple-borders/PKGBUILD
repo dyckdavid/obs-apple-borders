@@ -1,0 +1,38 @@
+# Maintainer: David Dyck <dyckdavid@users.noreply.github.com>
+# Builds from source against Arch's obs-studio (Wayland/Hyprland-friendly).
+#
+# Install paths (match Arch OBS):
+#   /usr/lib/obs-plugins/obs-apple-borders.so
+#   /usr/share/obs/obs-plugins/obs-apple-borders/
+
+pkgname=obs-apple-borders
+pkgver=1.4.0
+pkgrel=1
+pkgdesc="Apple-styled borders, PiP, backdrops, and polish filters for OBS Studio"
+arch=('x86_64' 'aarch64')
+url="https://github.com/dyckdavid/obs-apple-borders"
+license=('MIT')
+depends=('obs-studio')
+makedepends=('cmake' 'ninja' 'git')
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+}
+
+build() {
+  cmake -S "${srcdir}/${pkgname}-${pkgver}" -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DENABLE_FRONTEND_API=OFF \
+    -DENABLE_QT=OFF
+  cmake --build build
+}
+
+package() {
+  DESTDIR="${pkgdir}" cmake --install build
+  install -Dm644 "${srcdir}/${pkgname}-${pkgver}/LICENSE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

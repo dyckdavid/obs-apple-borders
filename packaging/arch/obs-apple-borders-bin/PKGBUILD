@@ -1,0 +1,26 @@
+# Maintainer: David Dyck <dyckdavid@users.noreply.github.com>
+# Binary package that reuses the GitHub Release .pkg.tar.zst asset.
+# Prefer this on Omarchy / Arch when you want a double-click install without compiling.
+
+pkgname=obs-apple-borders-bin
+_pkgname=obs-apple-borders
+pkgver=1.4.0
+pkgrel=1
+pkgdesc="Apple-styled borders, PiP, and backdrops for OBS Studio (prebuilt)"
+arch=('x86_64')
+url="https://github.com/dyckdavid/obs-apple-borders"
+license=('MIT')
+depends=('obs-studio')
+provides=("${_pkgname}")
+conflicts=("${_pkgname}")
+options=('!strip')
+source=("${_pkgname}-${pkgver}-${CARCH}.pkg.tar.zst::${url}/releases/download/v${pkgver}/${_pkgname}-${pkgver}-${CARCH}.pkg.tar.zst")
+sha256sums=('SKIP')
+noextract=("${_pkgname}-${pkgver}-${CARCH}.pkg.tar.zst")
+
+package() {
+  bsdtar -xf "${srcdir}/${_pkgname}-${pkgver}-${CARCH}.pkg.tar.zst" -C "${pkgdir}"
+  # Drop pacman metadata from the nested package so this AUR package owns the files
+  rm -f "${pkgdir}/.PKGINFO" "${pkgdir}/.BUILDINFO" "${pkgdir}/.MTREE" \
+        "${pkgdir}/.INSTALL" "${pkgdir}/.CHANGELOG"
+}

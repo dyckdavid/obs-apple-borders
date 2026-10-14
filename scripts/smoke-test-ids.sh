@@ -36,7 +36,15 @@ require_match "style_preset" '"style_preset"' "$ROOT/src/sources/apple-lower-thi
 require_match "palette" '"palette"' "$ROOT/src/sources/apple-soft-gradient-source.c"
 
 echo "== Version =="
-require_match "version 1.3.0" '"version": "1.3.0"' "$ROOT/buildspec.json"
+require_match "version 1.4.0" '"version": "1.4.0"' "$ROOT/buildspec.json"
+require_match "thick border style" 'APPLE_BORDER_THICK' "$ROOT/src/common/apple-chrome.h"
+require_match "glass border style" 'APPLE_BORDER_GLASS' "$ROOT/src/common/apple-chrome.h"
+require_match "inner glow style" 'APPLE_BORDER_INNER_GLOW' "$ROOT/src/common/apple-chrome.h"
+require_match "per-corner radius" 'corner_radius_tl' "$ROOT/src/common/apple-chrome.c"
+require_match "gradient border" 'enable_border_gradient' "$ROOT/src/common/apple-chrome.c"
+require_match "shadow preset" 'shadow_preset' "$ROOT/src/common/apple-chrome.c"
+require_match "charcoal backdrop" 'apple_charcoal_panels' "$ROOT/src/sources/apple-backdrop-source.c"
+require_match "arch PKGBUILD" 'pkgver=1.4.0' "$ROOT/packaging/arch/obs-apple-borders/PKGBUILD"
 
 if [[ "$FAIL" -ne 0 ]]; then
   echo "Smoke test FAILED"

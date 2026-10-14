@@ -293,3 +293,55 @@ jobs:
         with:
           name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-x64-${{ needs.check-event.outputs.commitHash }}
           path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-x64*.*
+
+  archlinux-build:
+    name: Build for Arch Linux 🐧
+    runs-on: ubuntu-24.04
+    needs: check-event
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set Up Environment 🔧
+        id: setup
+        run: |
+          : Set Up Environment 🔧
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
+
+          read -r product_name product_version <<< \
+            "$(jq -r '. | {name, version} | join(" ")' buildspec.json)"
+
+          echo "pluginName=${product_name}" >> $GITHUB_OUTPUT
+          echo "pluginVersion=${product_version}" >> $GITHUB_OUTPUT
+
+      - name: Build Arch Package in Container 📦
+        run: |
+          : Build Arch Package in Container 📦
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
+          chmod +x .github/scripts/build-arch.sh
+          docker run --rm \
+            --volume "${{ github.workspace }}:/workspace" \
+            --workdir /workspace \
+            -e RUNNER_DEBUG \
+            -e GITHUB_STEP_SUMMARY=/workspace/arch-step-summary.md \
+            archlinux:base-devel \
+            bash -lc './.github/scripts/build-arch.sh "${{ needs.check-event.outputs.config }}"'
+          # Container runs as root; restore workspace ownership for artifact upload
+          sudo chown -R "$(id -u):$(id -g)" "${{ github.workspace }}/release" \
+            "${{ github.workspace }}/build_arch_x86_64" \
+            "${{ github.workspace }}/arch-step-summary.md" 2>/dev/null || true
+          if [[ -f arch-step-summary.md ]]; then
+            cat arch-step-summary.md >> "${GITHUB_STEP_SUMMARY}"
+            rm -f arch-step-summary.md
+          fi
+
+      - name: Upload Artifacts 📡
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-archlinux-x86_64-${{ needs.check-event.outputs.commitHash }}
+          path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-*.pkg.tar.zst

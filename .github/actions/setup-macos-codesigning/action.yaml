@@ -101,12 +101,25 @@ runs:
           security find-identity -v -p codesigning ${keychain_path} || true
           print '::endgroup::'
 
-          # Prefer Team ID from "Name (TEAMID)" — Apple Team IDs are 10 alphanumerics
+          # Accept full CN or bare "Name (TEAMID)" — prepend Developer ID prefix if missing
+          local app_ident="${MACOS_SIGNING_IDENTITY}"
+          local installer_ident="${MACOS_SIGNING_IDENTITY_INSTALLER}"
+          if [[ ${app_ident} != Developer\ ID\ Application:* ]] {
+            app_ident="Developer ID Application: ${app_ident}"
+            print "::notice::Prepended 'Developer ID Application:' to APPLE_APPLICATION_IDENTITY"
+          }
+          if [[ ${installer_ident} != Developer\ ID\ Installer:* ]] {
+            installer_ident="Developer ID Installer: ${installer_ident}"
+            print "::notice::Prepended 'Developer ID Installer:' to APPLE_INSTALLER_IDENTITY"
+          }
+
+          # Team ID from "Name (TEAMID)" — Apple Team IDs are 10 alphanumerics
           local team_id
-          team_id="$(print "${MACOS_SIGNING_IDENTITY}" | /usr/bin/sed -En 's/.*\(([A-Z0-9]{10})\).*/\1/p')"
+          team_id="$(print "${app_ident}" | /usr/bin/sed -En 's/.*\(([A-Z0-9]{10})\).*/\1/p')"
           if [[ -z ${team_id} ]] {
             print '::error::APPLE_APPLICATION_IDENTITY must look like:'
             print '::error::  Developer ID Application: Your Name (TEAMID)'
+            print '::error::or the bare form: Your Name (TEAMID)'
             print '::error::where TEAMID is your 10-character Apple Team ID in parentheses.'
             print '::error::Current value does not contain a (TEAMID) suffix (parsed team was empty).'
             print '::error::Copy the exact string from Keychain Access → certificate → Common Name.'
@@ -114,9 +127,9 @@ runs:
           }
 
           if ! security find-identity -v -p codesigning ${keychain_path} \
-              | /usr/bin/grep -F "\"${MACOS_SIGNING_IDENTITY}\"" >/dev/null; then
+              | /usr/bin/grep -F "\"${app_ident}\"" >/dev/null; then
             print "::error::No codesigning certificate in the imported p12 matches APPLE_APPLICATION_IDENTITY."
-            print "::error::Expected exact Common Name: ${MACOS_SIGNING_IDENTITY}"
+            print "::error::Expected exact Common Name: ${app_ident}"
             print '::error::Fix APPLE_APPLICATION_IDENTITY to match a Developer ID Application identity'
             print '::error::shown above, or re-export APPLE_CERTIFICATE (.p12) including that Application'
             print '::error::certificate and its private key (base64-encoded).'
@@ -124,14 +137,15 @@ runs:
           fi
 
           if ! security find-identity -v ${keychain_path} \
-              | /usr/bin/grep -F "\"${MACOS_SIGNING_IDENTITY_INSTALLER}\"" >/dev/null; then
+              | /usr/bin/grep -F "\"${installer_ident}\"" >/dev/null; then
             print '::warning::APPLE_INSTALLER_IDENTITY was not found in the imported p12.'
+            print "::warning::Expected: ${installer_ident}"
             print '::warning::productsign will fail later unless the Developer ID Installer cert is included.'
             print '::warning::Export both Application + Installer certs into one .p12, or fix APPLE_INSTALLER_IDENTITY.'
           fi
 
-          print "codesignIdent=${MACOS_SIGNING_IDENTITY}" >> $GITHUB_OUTPUT
-          print "installerIdent=${MACOS_SIGNING_IDENTITY_INSTALLER}" >> $GITHUB_OUTPUT
+          print "codesignIdent=${app_ident}" >> $GITHUB_OUTPUT
+          print "installerIdent=${installer_ident}" >> $GITHUB_OUTPUT
           print "MACOS_KEYCHAIN_PASSWORD=${MACOS_KEYCHAIN_PASSWORD}" >> $GITHUB_ENV
           print "codesignTeam=${team_id}" >> $GITHUB_OUTPUT
           print "haveCodesignIdent=true" >> $GITHUB_OUTPUT

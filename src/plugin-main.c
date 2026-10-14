@@ -1,25 +1,24 @@
 /*
  * OBS Apple Borders
- * macOS-styled rounded borders + Picture-in-Picture filters for OBS Studio.
+ * macOS-styled rounded borders, PiP, backdrops, and polish filters/sources.
  *
  * MIT License
  */
 
 #include <obs-module.h>
+#include <plugin-support.h>
 
-#include "apple-border-filter.h"
-#include "apple-pip-filter.h"
 #include "apple-backdrop-source.h"
-#include "apple-vignette-filter.h"
-#include "apple-spotlight-filter.h"
+#include "apple-border-filter.h"
 #include "apple-frost-filter.h"
 #include "apple-lower-third-source.h"
+#include "apple-pip-filter.h"
 #include "apple-soft-gradient-source.h"
-#include "plugin-support.h"
-#include "plugin-version.h"
+#include "apple-spotlight-filter.h"
+#include "apple-vignette-filter.h"
 
 OBS_DECLARE_MODULE()
-OBS_MODULE_USE_DEFAULT_LOCALE("obs-apple-borders", "en-US")
+OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
 MODULE_EXPORT const char *obs_module_description(void)
 {
@@ -42,8 +41,7 @@ bool obs_module_load(void)
 	obs_register_source(&apple_lower_third_source);
 	obs_register_source(&apple_soft_gradient_source);
 
-	apple_borders_log(
-		LOG_INFO,
+	obs_log(LOG_INFO,
 		"loaded successfully (version %s) — Border, PiP, Backdrop, Vignette, Spotlight, Frost, Lower Third, Soft Gradient ready",
 		PLUGIN_VERSION);
 	return true;
@@ -51,5 +49,5 @@ bool obs_module_load(void)
 
 void obs_module_unload(void)
 {
-	apple_borders_log(LOG_INFO, "unloaded");
+	obs_log(LOG_INFO, "unloaded");
 }

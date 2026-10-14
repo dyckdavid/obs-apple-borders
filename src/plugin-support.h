@@ -17,7 +17,8 @@ extern "C" {
 extern const char *PLUGIN_NAME;
 extern const char *PLUGIN_VERSION;
 
-void apple_borders_log(int log_level, const char *format, ...);
+void obs_log(int log_level, const char *format, ...);
+extern void blogva(int log_level, const char *format, va_list args);
 
 #ifdef __cplusplus
 }
